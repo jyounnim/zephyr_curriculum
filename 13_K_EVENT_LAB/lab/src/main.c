@@ -1,5 +1,4 @@
 // Source: 13_K_EVENT_LAB.md
-// Section: 코드
 
 #include <zephyr/kernel.h>
 

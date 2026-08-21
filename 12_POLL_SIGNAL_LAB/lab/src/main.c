@@ -2,7 +2,7 @@
 
 #include <zephyr/kernel.h>
 
-K_POLL_SIGNAL_DEFINE(my_signal);
+struct k_poll_signal my_signal = K_POLL_SIGNAL_INITIALIZER(my_signal);
 
 void producer_entry(void *p1, void *p2, void *p3) {
     int counter = 0;
