@@ -1,5 +1,4 @@
 // Source: 14_K_TIMER_LAB.md
-// Section: 코드
 
 #include <zephyr/kernel.h>
 
