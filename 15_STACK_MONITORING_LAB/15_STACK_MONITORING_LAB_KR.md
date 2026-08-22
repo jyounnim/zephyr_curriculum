@@ -6,11 +6,14 @@
 
 ## 사전 설정
 
-`prj.conf`에 아래 옵션이 필요합니다.
+`prj.conf`에 아래 두 옵션이 **모두** 필요합니다.
 
 ```
 CONFIG_THREAD_STACK_INFO=y
+CONFIG_INIT_STACKS=y
 ```
+
+`k_thread_stack_space_get`의 실제 구현체는 Zephyr 커널 소스 안에서 이 두 옵션이 **동시에** 켜져 있어야만 컴파일에 포함되도록 되어 있습니다. `CONFIG_THREAD_STACK_INFO`만 켜고 `CONFIG_INIT_STACKS`를 빠뜨리면, 코드는 컴파일되지만 링크 단계에서 `undefined reference to 'z_impl_k_thread_stack_space_get'` 에러가 납니다.
 
 ## 핵심 개념
 
@@ -81,6 +84,12 @@ int main(void) {
 - `HeavyThread`의 `STACK_SIZE`를 `2048`에서 `512`로 줄여보세요 — 여유분이 0에 가까워지거나, Zephyr의 내장 스택 보호 기능(하드웨어 MPU 가드 또는 canary, 보드/설정에 따라 다름)에 의해 `Stack overflow` 계열의 fatal error가 발생할 수 있습니다 (확인 후 다시 2048로 복구하세요)
 - Zephyr는 스택 크기를 **바이트 단위**로 지정한다는 점을 항상 기억하세요 — 다른 임베디드 플랫폼 경험이 있다면 word 단위와 헷갈리기 쉬운 부분입니다
 - `CONFIG_THREAD_RUNTIME_STACK_SAFETY`(고급 옵션)를 쓰면, 스택 여유분이 특정 임계값 아래로 떨어지는 "그 순간"을 감지해 콜백을 실행하는 능동적인 모니터링도 가능합니다 — 지금 실습처럼 주기적으로 폴링하는 방식보다 더 즉각적입니다
+
+## 트러블슈팅
+
+| 증상 | 원인 / 해결 |
+|---|---|
+| `undefined reference to 'z_impl_k_thread_stack_space_get'` | `prj.conf`에 `CONFIG_INIT_STACKS=y`가 빠짐 — `CONFIG_THREAD_STACK_INFO=y`만으로는 부족하고 두 옵션이 함께 필요합니다. 위 "사전 설정" 참고 |
 
 ## 다음
 
