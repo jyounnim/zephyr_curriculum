@@ -1,0 +1,7 @@
+&i2c1 {
+    aht20_sensor: aht20@38 {
+        compatible = "zds,aht20";
+        reg = <0x38>;
+        status = "okay";
+    };
+};

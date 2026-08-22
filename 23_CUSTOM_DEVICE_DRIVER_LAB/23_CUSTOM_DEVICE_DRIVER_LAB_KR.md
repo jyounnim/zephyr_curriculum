@@ -72,7 +72,6 @@ config AHT20
     bool "AHT20 temperature and humidity sensor"
     default y
     depends on I2C
-    select I2C
     help
       AHT20 I2C 온습도 센서 드라이버를 활성화합니다.
 ```
@@ -84,16 +83,27 @@ source "Kconfig.zephyr"
 rsource "drivers/sensor/aht20/Kconfig"
 ```
 
-## Step 3. 드라이버 빌드 설정
+## Step 3. 드라이버 소스를 앱 타겟에 직접 추가
 
-**`drivers/sensor/aht20/CMakeLists.txt`**
+드라이버를 별도의 `zephyr_library()`로 만들지 않습니다. 앱의 `add_subdirectory()`로 불러온 서브디렉토리 안에서 `zephyr_library()`를 호출하면 **"application mode"**로 처리되는데, 이 시점엔 이미 최종 링크 대상 라이브러리 목록이 확정된 뒤라 `zephyr_library()` 호출이 사실상 아무 효과 없는 명령(no-op)이 됩니다 — 소스는 컴파일되지만 결과물이 최종 이미지에 링크되지 않아, `SENSOR_DEVICE_DT_INST_DEFINE`이 만든 디바이스 심볼을 나중에 `main.c`에서 찾지 못하는 `undefined reference` 에러로 이어집니다 (Zephyr GitHub PR #91143에서 이 동작이 의도된 경고임을 확인).
+
+대신 드라이버 소스를 **`app` 타겟에 직접** 추가합니다 — `app`은 항상 확실하게 최종 이미지에 링크되는 특별한 타겟이라 이 문제 자체가 생기지 않습니다.
+
+**`CMakeLists.txt`** (앱 최상위, Step 5 CMakeLists.txt를 아래 내용으로 교체)
 
 ```cmake
-zephyr_library()
-zephyr_library_sources_ifdef(CONFIG_AHT20 aht20.c)
+cmake_minimum_required(VERSION 3.20.0)
+
+list(APPEND DTS_ROOT ${CMAKE_CURRENT_SOURCE_DIR})   # 이 프로젝트의 dts/bindings도 검색하도록 추가
+
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(aht20_driver_example)
+
+target_sources(app PRIVATE src/main.c)
+target_sources_ifdef(CONFIG_AHT20 app PRIVATE drivers/sensor/aht20/aht20.c)
 ```
 
-`_ifdef`가 붙어있어서, `prj.conf`에 `CONFIG_AHT20=y`가 없으면 이 파일은 아예 컴파일 대상에서 빠집니다 — 안 쓰는 드라이버가 플래시 용량을 차지하지 않습니다.
+`target_sources_ifdef`는 Zephyr가 제공하는 CMake 확장 함수로, `CONFIG_AHT20`이 `y`일 때만 그 소스를 지정한 타겟(`app`)에 추가합니다 — `_ifdef`가 붙은 이유(안 쓰는 드라이버는 컴파일 대상에서 빠짐)는 이전과 동일합니다.
 
 ## Step 4. 드라이버 구현
 
@@ -197,21 +207,7 @@ static int aht20_init(const struct device *dev) {
 DT_INST_FOREACH_STATUS_OKAY(AHT20_INIT)
 ```
 
-## Step 5. 앱 CMakeLists.txt — 드라이버와 바인딩 위치 알려주기
-
-```cmake
-cmake_minimum_required(VERSION 3.20.0)
-
-list(APPEND DTS_ROOT ${CMAKE_CURRENT_SOURCE_DIR})   # 이 프로젝트의 dts/bindings도 검색하도록 추가
-
-find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(aht20_driver_example)
-
-add_subdirectory(drivers/sensor/aht20)
-target_sources(app PRIVATE src/main.c)
-```
-
-## Step 6. Devicetree 오버레이 — 실제 하드웨어 배치
+## Step 5. Devicetree 오버레이 — 실제 하드웨어 배치
 
 **`boards/esp32s3_devkitc.overlay`**
 
@@ -229,7 +225,7 @@ target_sources(app PRIVATE src/main.c)
 
 > `&i2c0`은 보드의 I2C 컨트롤러 노드 레이블입니다. 사용 중인 Zephyr 버전/보드에서 정확한 레이블이 다를 수 있으니, `west build -t devicetree` 후 생성되는 병합된 devicetree(`build/zephyr/zephyr.dts`)에서 실제 I2C 노드 이름을 확인하세요.
 
-## Step 7. prj.conf
+## Step 6. prj.conf
 
 ```
 CONFIG_I2C=y
@@ -238,7 +234,7 @@ CONFIG_AHT20=y
 CONFIG_LOG=y
 ```
 
-## Step 8. 앱 코드 — 센서 종류를 몰라도 되는 코드
+## Step 7. 앱 코드 — 센서 종류를 몰라도 되는 코드
 
 **`src/main.c`**
 
@@ -288,18 +284,20 @@ west espressif monitor
 
 - **`main.c`은 AHT20이라는 이름조차 몰라도 됩니다** (`DEVICE_DT_GET_ANY(zds_aht20)`로 디바이스를 가져오는 부분만 제외하면). `sensor_sample_fetch`/`sensor_channel_get`은 BME280이든 MPU6050이든 똑같이 호출하는 함수입니다 — **센서를 교체해도 이 두 줄의 호출 패턴 자체는 안 바뀝니다.** 이게 Zephyr의 드라이버 모델이 여러 하드웨어로 확장할 때 강점을 갖는 이유의 구체적인 사례입니다
 - `DT_INST_FOREACH_STATUS_OKAY(AHT20_INIT)` 덕분에, 오버레이에 AHT20을 **여러 개**(다른 I2C 버스나 주소로) 선언하면 코드 수정 없이 인스턴스가 자동으로 여러 개 생성됩니다
-- `zephyr_library_sources_ifdef(CONFIG_AHT20 aht20.c)` 패턴은 Zephyr 안의 모든 in-tree 드라이버가 쓰는 방식과 동일합니다 — 지금 만든 것도 구조적으로는 Zephyr 공식 드라이버와 다를 게 없습니다. 실제로 완성도를 더 높이면(전원관리 콜백, 트리거/인터럽트 지원 등 추가) 공식 Zephyr에 업스트림으로 기여하는 것도 가능합니다
+- 이 실습에서 배운 가장 중요한 교훈은 코드 자체보다 **빌드 시스템의 동작 원리**입니다 — `zephyr_library()`처럼 Zephyr 전용 CMake 함수라도, 언제·어디서 호출하느냐(커널 모드 vs 애플리케이션 모드)에 따라 동작 여부가 갈립니다. 진짜 재사용 가능한 독립 컴포넌트로 만들고 싶다면, `zephyr/module.yml`을 갖춘 정식 Zephyr 모듈로 분리하고 `ZEPHYR_EXTRA_MODULES`로 등록하는 게 공식적으로 권장되는 다음 단계입니다
 - `sensor_value`가 `val1`(정수부) + `val2`(마이크로 단위 소수부) 두 필드로 나뉜 이유: Zephyr 커널은 부동소수점 연산을 기본적으로 피하는 경향이 있습니다(일부 MCU는 FPU가 없거나, 있어도 인터럽트 컨텍스트에서 부동소수점 사용이 제한적) — 그래서 센서 값도 정수 두 개로 표현하는 고정소수점 방식을 표준으로 씁니다
 
 ## 트러블슈팅
 
 | 증상 | 원인 / 해결 |
 |---|---|
-| `undefined reference to 'aht20_init'` 등 링크 에러 | `add_subdirectory(drivers/sensor/aht20)`가 앱 CMakeLists.txt에 빠졌는지 확인 |
+| `undefined reference to '__device_dts_ord_N'` 또는 `aht20_init` 등 링크 에러 | 드라이버 소스가 최종 이미지에 링크되지 않은 것 — 별도 `zephyr_library()` + `add_subdirectory()` 방식을 쓰고 있다면 Step 3에서 설명한 "application mode no-op" 문제일 가능성이 높습니다. `target_sources_ifdef(CONFIG_AHT20 app PRIVATE ...)`로 `app` 타겟에 직접 추가하는 방식(Step 3)으로 바꾸세요 |
 | Devicetree 바인딩을 못 찾음 (`'zds,aht20' compatible not found`) | `list(APPEND DTS_ROOT ${CMAKE_CURRENT_SOURCE_DIR})`가 `find_package(Zephyr...)` **이전**에 있는지 확인 (순서 중요) |
-| `device_is_ready()`가 계속 false | 오버레이의 `&i2c0` 레이블이 실제 보드와 다를 수 있음 — `west build -t devicetree`로 병합된 dts에서 정확한 I2C 노드명 확인 |
+| `device_is_ready()`가 계속 false | 오버레이의 I2C 버스 레이블(`&i2c0`, `&i2c1` 등)이 실제 보드와 다를 수 있음 — `west build -t devicetree`로 병합된 dts에서 정확한 I2C 노드명 확인 |
 | 값이 `non_os/10`(Arduino)과 다르게 나옴 | 트리거 명령(`0xAC 0x33 0x00`)이나 raw 값 비트 계산식을 다시 확인 — 두 구현이 같은 프로토콜이므로 값이 같아야 정상 |
 | `CONFIG_AHT20`이 안 먹힘 | 앱 최상위 `Kconfig` 파일에 `rsource "drivers/sensor/aht20/Kconfig"`가 있는지, 파일명이 정확히 `Kconfig`(확장자 없음)인지 확인 |
+| Kconfig 순환 의존성 에러 (`...depends on I2C ... select I2C ...`) | `depends on I2C`와 `select I2C`를 동시에 쓴 게 원인 — 이 둘을 같은 심볼에 함께 쓰면 I2C의 역방향 의존 체인(다른 드라이버의 select 등)과 얽혀 순환 의존성 에러가 날 수 있는 Kconfig 안티패턴입니다. `select I2C`를 지우고 `depends on I2C`만 남기세요 |
+| `fatal error: zephyr/heap_constants.h: No such file or directory` | Zephyr 4.4.0에서 보고된 이슈로, 별도 `zephyr_library()`를 쓸 때 `zephyr_generated_headers`보다 먼저 컴파일되며 생기던 문제입니다 — Step 3의 `target_sources_ifdef(app ...)` 방식으로 바꾸면 `app` 타겟이 이미 이 의존성을 올바르게 갖고 있어서 이 문제 자체가 발생하지 않습니다 |
 
 ## 다음 응용 주제
 

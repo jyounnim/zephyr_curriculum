@@ -1,0 +1,6 @@
+config AHT20
+    bool "AHT20 temperature and humidity sensor"
+    default y
+    depends on I2C
+    help
+      Enables the AHT20 I2C temperature/humidity sensor driver.

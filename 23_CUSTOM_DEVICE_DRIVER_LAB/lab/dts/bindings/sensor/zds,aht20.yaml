@@ -1,0 +1,5 @@
+description: AHT20 I2C temperature and humidity sensor
+
+compatible: "zds,aht20"
+
+include: i2c-device.yaml
