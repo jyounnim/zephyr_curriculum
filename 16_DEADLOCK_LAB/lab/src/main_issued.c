@@ -1,5 +1,5 @@
 // Source: 16_DEADLOCK_LAB.md
-// Section: 코드 (문제 상황 재현)
+// Section: Issued
 
 #include <zephyr/kernel.h>
 
