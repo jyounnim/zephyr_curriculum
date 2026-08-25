@@ -30,10 +30,10 @@ A 23-lab series for learning Zephyr RTOS's API and design philosophy, in order. 
 
 Unlike a generic Zephyr board, SR110 support lives in Synaptics' own fork/vendor repo — `syna_zephyr_sdk` — which vendors both the Zephyr kernel tree (`zephyr/`) and SR100-family board/SoC definitions (`zephyr_srsdk/`) together, plus flashing tools (`srsdk_tools/`).
 
-**This curriculum itself lives in a separate git repo, cloned independently alongside `syna_zephyr_sdk`** — not nested inside it:
+**This curriculum itself lives in a separate git repo, cloned independently alongside `syna_zephyr_sdk`** — not nested inside it. The SR110 version of this curriculum lives on the **`SR110` branch** of that repo (the `main` branch stays on the original ESP32-S3 version), so clone with `-b SR110`:
 
 ```powershell
-git clone https://github.com/jyounnim/zephyr_curriculum
+git clone -b SR110 https://github.com/jyounnim/zephyr_curriculum
 ```
 
 A confirmed real workspace layout, with both repos cloned side by side under the same parent folder, looks like this:
@@ -146,11 +146,11 @@ If `sr100_rdk` shows up as a board target, everything is working.
 
 ## Step 3. Getting the Curriculum Repo / Creating a New Project
 
-Clone this curriculum's own repo directly into the workspace root, alongside `syna_zephyr_sdk`'s folders:
+Clone this curriculum's own repo directly into the workspace root, alongside `syna_zephyr_sdk`'s folders — make sure to check out the **`SR110` branch** (`main` is the original ESP32-S3 version):
 
 ```powershell
 cd <workspace root>       # the parent of zephyr/, zephyr_srsdk/, srsdk_tools/
-git clone https://github.com/jyounnim/zephyr_curriculum
+git clone -b SR110 https://github.com/jyounnim/zephyr_curriculum
 ```
 
 Every lab lives under `zephyr_curriculum/<LAB_NAME>/lab/` — this convention (confirmed in real use) keeps each lab's `src/`, `CMakeLists.txt`, `prj.conf`, and any `boards/*.overlay` self-contained, and matches how the west build command below expects to be invoked (as a path argument from the workspace root, rather than `cd`-ing into the lab directory first).

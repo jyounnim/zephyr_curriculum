@@ -30,10 +30,10 @@ Zephyr RTOS의 API와 설계 철학을 순서대로 배우는 23개 랩 시리�
 
 일반적인 Zephyr 보드와 달리, SR110 지원은 Synaptics 자체 포크/벤더 리포인 `syna_zephyr_sdk`에 들어있습니다 — Zephyr 커널 트리(`zephyr/`)와 SR100 계열 보드/SoC 정의(`zephyr_srsdk/`)를 함께 벤더링하고, 플래싱 도구(`srsdk_tools/`)도 같이 있습니다.
 
-**이 커리큘럼 자체는 별도의 git 리포이며, `syna_zephyr_sdk`와 나란히(그 안에 중첩되지 않고) 독립적으로 clone합니다.**
+**이 커리큘럼 자체는 별도의 git 리포이며, `syna_zephyr_sdk`와 나란히(그 안에 중첩되지 않고) 독립적으로 clone합니다.** 이 커리큘럼의 SR110 버전은 그 리포의 **`SR110` 브랜치**에 있습니다 (`main` 브랜치는 원본 ESP32-S3 버전으로 그대로 남아있음) — `-b SR110`으로 clone하세요.
 
 ```powershell
-git clone https://github.com/jyounnim/zephyr_curriculum
+git clone -b SR110 https://github.com/jyounnim/zephyr_curriculum
 ```
 
 두 리포를 같은 부모 폴더 아래 나란히 clone하면, 실제로 확인된 워크스페이스 구조는 다음과 같습니다.
@@ -146,11 +146,11 @@ python -m west boards | findstr sr100    # macOS/Linux: grep sr100
 
 ## Step 3. 커리큘럼 리포 받기 / 새 프로젝트 만들기
 
-이 커리큘럼 자체의 리포를 워크스페이스 루트에 `syna_zephyr_sdk`의 폴더들과 나란히 clone합니다.
+이 커리큘럼 자체의 리포를 워크스페이스 루트에 `syna_zephyr_sdk`의 폴더들과 나란히 clone합니다 — **`SR110` 브랜치**로 받아야 합니다 (`main`은 원본 ESP32-S3 버전).
 
 ```powershell
 cd <워크스페이스 루트>       # zephyr/, zephyr_srsdk/, srsdk_tools/의 부모 디렉토리
-git clone https://github.com/jyounnim/zephyr_curriculum
+git clone -b SR110 https://github.com/jyounnim/zephyr_curriculum
 ```
 
 모든 랩은 `zephyr_curriculum/<랩 이름>/lab/` 아래에 있습니다 — 실제 사용에서 확인된 이 관례는 각 랩의 `src/`, `CMakeLists.txt`, `prj.conf`, `boards/*.overlay`를 독립적으로 유지하고, 아래 west 빌드 명령이 (랩 디렉토리로 `cd`하지 않고) 워크스페이스 루트에서 경로 인자로 호출되는 방식과 맞습니다.
