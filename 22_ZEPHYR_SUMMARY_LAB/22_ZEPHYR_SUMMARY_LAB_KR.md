@@ -57,7 +57,7 @@
 | 15 | `k_thread_stack_space_get`은 바이트 단위로 스택 여유분을 알려준다 |
 | 16 | 여러 Mutex는 항상 같은 순서로 잠가야 Deadlock을 피한다 |
 | 17 | ISR과 경합하는 데이터는 `k_sched_lock`이 아니라 `irq_lock`/`k_spinlock`으로 보호한다 |
-| 18 | ESP32-S3에서 Zephyr는 AMP 구조 — 코어마다 별도 OS 이미지다 |
+| 18 | SR110은 이종(M55+M4) AMP 구조 — 코어마다 별도 OS 이미지, Zephyr 표준 mbox API로 통신 |
 | 19 | `CONFIG_PM=y` 하나로 코드 수정 없이 자동 절전이 가능하다 |
 | 20 | `k_thread_runtime_stats_get`은 이식성 있는 표준 CPU 사용률 API다 |
 | 21 | `k_msgq` + `k_mutex`를 조합하면 실전 Producer-Consumer 패턴이 된다 |

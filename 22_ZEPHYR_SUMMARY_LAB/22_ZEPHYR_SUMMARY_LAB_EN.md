@@ -57,7 +57,7 @@ Because you always build directly from source via `west`, `prj.conf` (Kconfig) o
 | 15 | `k_thread_stack_space_get` reports stack headroom in bytes |
 | 16 | Multiple mutexes must always be locked in the same order to avoid deadlock |
 | 17 | Data contended by an ISR is protected with `irq_lock`/`k_spinlock` |
-| 18 | The ESP32-S3 uses an AMP architecture — a separate OS image per core |
+| 18 | SR110 uses a heterogeneous AMP architecture (Cortex-M55 + Cortex-M4) — a separate OS image per core, communicating via Zephyr's standard mbox API |
 | 19 | A single `CONFIG_PM=y` enables automatic power saving with no code changes |
 | 20 | `k_thread_runtime_stats_get` is a portable, standard CPU usage API |
 | 21 | Combining `k_msgq` + `k_mutex` gives you a real-world Producer-Consumer pattern |

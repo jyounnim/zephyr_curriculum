@@ -6,30 +6,31 @@ The pattern here is: signal-only in the ISR, real processing in a thread. Zephyr
 
 ## What You'll Need
 
-- 1 tactile switch (button) — GPIO5, GND (same wiring as `GPIO_LAB.md`)
-- A Devicetree overlay file (see below)
+- Nothing extra — **this lab uses the physical button (SW8) that's already on the SR110 RDK board.** No wiring or devicetree overlay required.
 
-## Devicetree Overlay
-
-Add the following to your project's `boards/esp32s3_devkitc.overlay` file (create it if it doesn't exist yet).
-
-```dts
-/ {
-    aliases {
-        sw0 = &button0;
-    };
-
-    buttons {
-        compatible = "gpio-keys";
-        button0: button_0 {
-            gpios = <&gpio0 5 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            label = "User button";
-        };
-    };
-};
-```
-
-This overlay tells Zephyr "there's a button on GPIO5, pulled up, that goes LOW when pressed," and lets your code reference it easily via the alias `sw0`.
+> **Confirmed against the real board `sr100_rdk_m55.dts` (reviewed 2026-08)**: the board-level devicetree already defines a `sw0` alias pointing at the `user_button` node.
+>
+> ```dts
+> aliases {
+>     ...
+>     sw0 = &user_button;
+>     ...
+> };
+>
+> buttons: keys {
+>     compatible = "gpio-keys";
+>
+>     user_button: user_button {
+>         label = "SW8";
+>         gpios = <&gpio_exp0 11 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+>         zephyr,code = <INPUT_KEY_0>;
+>     };
+> };
+> ```
+>
+> So the actual physical button is silkscreened **SW8**, and it's wired to pin 11 of `gpio_exp0` (the PCA6416A I2C GPIO expander, on I2C1 — see the I2C bus scanner lab). `gpio_exp0` wires its own INT pin (`&gpioa 3`) to a real SoC GPIO, so a button sitting behind the expander still works with Zephyr's standard GPIO interrupt API (`gpio_pin_interrupt_configure_dt`, `gpio_add_callback`, etc.) — being behind I2C is invisible to application code.
+>
+> **Bottom line: no new GPIO to define, no external button to wire — just use the existing `sw0` alias.** The code below only references `DT_ALIAS(sw0)`, so no overlay file is needed at all.
 
 ## Key Concepts
 
@@ -77,20 +78,31 @@ int main(void) {
     gpio_init_callback(&button_cb_data, button_pressed, BIT(button.pin));
     gpio_add_callback(button.port, &button_cb_data);
 
-    printk("Ready. Press the button connected to GPIO5.\n");
+    printk("Ready. Press SW8.\n");
     return 0;
 }
 ```
 
+`prj.conf`:
+
+```
+CONFIG_GPIO=y
+CONFIG_PRINTK=y
+```
+
+> Since `user_button` sits behind `gpio_exp0` (PCA6416A, `nxp,pcal6416a` compatible), confirm that this driver's Kconfig gets enabled automatically — the board dts already has `gpio_exp0` at `status = "okay"`, so this is usually picked up automatically, but if you hit a link error, you may need to enable the relevant `CONFIG_GPIO_PCAL6416A`-style Kconfig symbol explicitly.
+
 ## Run & Verify
 
-- Confirm `ButtonHandlerThread: interrupt signal received...` prints every time you press the button
+Console at 230400bps 8N1.
+
+- Confirm `ButtonHandlerThread: interrupt signal received...` prints every time you press SW8
 
 ## Things to Notice
 
 - Zephyr handles both a thread context and an ISR context with **a single `k_sem_give()`** — the kernel decides on its own whether the woken thread needs to run immediately. This unified API is the key takeaway of this lab
 - By contrast, `k_mutex` (covered in Lab 09) can **never** be used in an ISR (locking and unlocking are both forbidden) — because a mutex has the concept of an "owner," which doesn't naturally apply to an ISR context. Remember the principle: "use a semaphore for event signals, a mutex for protecting a resource"
-- The Devicetree approach may seem cumbersome at first, but it has the advantage that pin numbers aren't hardcoded into your code — **even if you switch boards, you only need to swap out the overlay file, and your application code can be reused as-is**
+- The Devicetree approach may seem cumbersome at first, but it has the advantage that pin numbers aren't hardcoded into your code — **as long as the alias/overlay lines up, application code can be reused as-is even across very different boards.** This lab is direct proof of that: going from ESP32-S3 to SR110, the application code (`main.c`) **didn't change at all**, even though the physical wiring went from a direct SoC GPIO button to a button sitting behind an I2C GPIO expander — `DT_ALIAS(sw0)` means the code never has to know the difference
 
 ## Next
 

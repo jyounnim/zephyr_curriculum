@@ -69,27 +69,27 @@ After installing, you must **fully quit and reopen VS Code** for the PATH change
 
 ---
 
-## 4. Setup Shows Unfamiliar Names Like `sr110_cm55`, `SRSDK` (Wrong Board/SDK, Not ESP32-S3)
+## 4. Setup Shows Names Like `sr110_cm55`, `SRSDK` — This Is Normal for SR110
 
 ### Symptom
 
 - A warning appears in the Problems panel that `c_cpp_properties.json` references a path like `sr110_cm55_fw`
 - Notifications appear like `SRSDK_DIR set to: ...\srsdk\srsdk-main\srsdk`, `No GCC_TOOLCHAIN_* key found in settings.json`, etc.
-- Afterward, running `west boards` shows no esp32s3-related boards at all
+- You're unsure whether `west boards` showing `sr100_rdk` is correct, or whether something else should be there
 
-### Cause
+### What to Check
 
-`sr110` is a Cortex-M55 (ARM) based board — a completely different chip from the Xtensa-based ESP32-S3. `SRSDK` also doesn't match the official Zephyr SDK naming convention (`zephyr-sdk-x.y.z`). It appears that Setup Standard Workspace's automated flow proceeded with a **default/sample template built into the extension (for a different board)**, and the process of explicitly selecting the ESP32-S3 was skipped.
+An earlier (ESP32-S3-based) version of this curriculum treated this as "a warning sign the wrong board/SDK got configured" — because seeing Cortex-M55-targeted `sr110_cm55` or `SRSDK` while working on the Xtensa-based ESP32-S3 was indeed wrong.
 
-### Fix
+**Working on SR110, it's the opposite.** Seeing `sr110_cm55` (or `sr100_rdk/sr100/m55`) and `SRSDK`-related names is **expected** — that's exactly the board/SDK ecosystem this curriculum now targets. What to actually verify instead:
 
-Once you're in this state, don't continue the automated GUI flow further — **rebuild the workspace from scratch using Method B (manual CLI) instead.**
+1. Whether `west boards | findstr sr100` lists `sr100_rdk`
+2. Whether the toolchain is the confirmed `zephyr-sdk-1.0.1` (or an equivalent SR110 build) rather than an unrelated ecosystem — check the `Found toolchain:` and `Board:` lines in the `west build` log
+3. Conversely, if **ESP32-related names** (`esp32s3_devkitc`, `esptool`, etc.) show up in this workspace, the workspace may have been set up against the mainline Zephyr manifest instead of `syna_zephyr_sdk` — only in that case should you rebuild it
 
-1. Empty the affected workspace folder, or create a new one
-2. Following **Method B** in `00_ZEPHYR_CURRICULUM_LAB.md`, directly run `west init` from the CLI (using the official Zephyr manifest, `https://github.com/zephyrproject-rtos/zephyr`) → `west update`
-3. Once done, recognize this workspace in VS Code with `Zephyr IDE: Setup Workspace from Current Directory`
+### Bottom Line
 
-Going through the CLI directly gives you clear control over which manifest (which board ecosystem) you're pulling in, so this problem doesn't occur in the first place.
+The point isn't "unfamiliar names always mean something's wrong" — **what counts as normal here depends entirely on which board/SDK you're actually targeting.**
 
 ---
 
@@ -138,7 +138,7 @@ In most cases, this is Windows Defender (or another antivirus) real-time scannin
 1. **Sometimes simply retrying fixes it**:
    ```powershell
    Remove-Item -Recurse -Force .west -ErrorAction SilentlyContinue
-   python -m west init -m https://github.com/zephyrproject-rtos/zephyr --mr main .
+   # TODO/VERIFY: the exact west init manifest command for syna_zephyr_sdk (see 00_ZEPHYR_CURRICULUM_LAB.md, Step 2 Method B-4)
    ```
 2. **Run PowerShell as Administrator** and retry (this has actually resolved the issue in practice)
 3. **Add a Windows Defender exclusion**: Windows Security → Virus & threat protection → Manage settings → Add an exclusion → add your working folder (e.g., `C:\02.work`)
@@ -206,7 +206,7 @@ From now on, always work with `.venv` activated in this workspace (also point VS
 
 You can try installing with just the `hidapi` line excluded from `requirements.txt`, but it's been confirmed that `hidapi` is **also referenced separately inside a nested requirements file** (`requirements-*.txt`) that the top-level file pulls in, not just at the top level — so a single filtering pass doesn't fully solve it. Also, if you place the filtered file at the workspace root, the original `requirements.txt`'s structure of referencing other files in the same folder via relative paths can produce a new error like `Could not open requirements file: requirements-base.txt` (you must filter/install **from inside** the `zephyr\scripts` folder). For these reasons, the "root cause fix" above (switching Python versions) is recommended instead.
 
-Since the ESP32-S3 uses esptool for UART (serial) flashing, `hidapi` (mainly used for USB-HID-based debug probes) usually isn't needed for building/flashing right now anyway.
+SR110 uses CMSIS-DAP/OpenOCD-based flashing via `srsdk_tools`' `openocd_flash.py`, so `hidapi` (mainly used for USB-HID-based debug probes) usually isn't needed for building/flashing right now anyway.
 
 ---
 
@@ -253,28 +253,30 @@ winget install 7zip.7zip
 
 ---
 
-## 11. `Board qualifiers 'esp32s3' for board 'esp32s3_devkitc' not found`
+## 11. `Board qualifiers 'sr100' for board 'sr100_rdk' not found`
 
 ### Symptom
 
 ```
-CMake Error ... Board qualifiers `esp32s3` for board `esp32s3_devkitc` not found.
-Valid board targets for esp32s3_devkitc are:
-  esp32s3_devkitc/esp32s3/procpu
-  esp32s3_devkitc/esp32s3/appcpu
+CMake Error ... Board qualifiers `sr100` for board `sr100_rdk` not found.
+Valid board targets for sr100_rdk are:
+  sr100_rdk/sr100/m55
+  ...
 ```
 
 ### Cause
 
-On Zephyr, the ESP32-S3 uses an **AMP architecture, not SMP** (see `18_MULTICORE_REALITY_LAB.md`) — since a separate OS image is built per core, you must specify which core to target right in the board name.
+SR110 uses a **heterogeneous M55/M4 AMP architecture** on Zephyr (see `18_MULTICORE_REALITY_LAB.md`) — since a separate OS image is built per core, you must specify which core to target right in the board name.
 
 ### Fix
 
 ```powershell
-west build -b esp32s3_devkitc/esp32s3/procpu
+west build -b sr100_rdk/sr100/m55
 ```
 
-A typical application (using a serial console) always uses **`procpu`**. `appcpu` is only needed for the special dual-core IPC scenario covered in `18_MULTICORE_REALITY_LAB.md`.
+A typical application (using a serial console) always uses **`m55`**. `m4` is only needed for the special dual-core IPC scenario covered in `18_MULTICORE_REALITY_LAB.md`.
+
+> TODO/VERIFY: the exact board qualifier for the M4 side (presumably `sr100_rdk/sr100/m4`) hasn't actually been built in this curriculum pass — check the `Valid board targets` output from `west boards` for the real spelling.
 
 ---
 
@@ -314,34 +316,36 @@ The `build` folder already exists but `build.ninja` is missing or corrupted insi
 ### Fix
 
 ```powershell
-west build -p always -b esp32s3_devkitc/esp32s3/procpu
+west build -p always -b sr100_rdk/sr100/m55
 ```
 
 `-p always` (pristine) ignores the existing build folder and reconfigures from scratch. Alternatively, delete the `build` folder yourself (`Remove-Item -Recurse -Force build`) and retry — same result.
 
 ---
 
-## 14. `esptool>=5.0.2 not found in PATH`
+## 14. `west flash` Doesn't Find the Right Runner for SR110, or Behaves Unexpectedly
 
 ### Symptom
 
-CMake configuration passes entirely (even identifying the compiler), then stalls on this error at the end
+Running `west flash` doesn't flash as expected, or you get errors about image path/offset
 
 ### Cause
 
-`esptool`, needed for flashing the ESP32-S3, isn't installed in the venv. Downloading source with `west update` and installing each module's Python tools (like `esptool`) are separate steps.
+SR110's confirmed real flashing method is running `srsdk_tools`' `openocd_flash.py` separately, rather than relying on the standard `west flash` flow (Zephyr's official `sr100_rdk` board docs also describe `west debugserver` plus running `openocd_flash.py` in a separate terminal). This is a different flashing procedure than ESP32-S3, where `west flash` alone (via esptool) is sufficient.
 
 ### Fix
 
 ```powershell
-west packages pip --install
+cd srsdk_tools
+python openocd_flash.py `
+  --openocd <path to openocd.exe> `
+  --flash-offset 0x0 `
+  --file-offset 0x0 `
+  --cfg_path Input_Config\sr100_m55.cfg `
+  --image <path to the built/converted image>.bin
 ```
 
-If this command doesn't work (depending on your west version):
-
-```powershell
-python -m pip install esptool
-```
+Whether `--image` should point directly at the raw build output (`build\zephyr\zephyr.bin`) or at an image that's gone through separate signing/packaging can differ by SDK release — see the TODO/VERIFY note in the Flash section of `00_ZEPHYR_CURRICULUM_LAB.md`.
 
 ---
 
@@ -425,9 +429,9 @@ python -m west sdk install --install-base D:\zephyr_toolchains
 - [ ] Are you using a dedicated Python 3.11/3.12 venv? (#8 — prevents most cascading problems)
 - [ ] Is 7-Zip installed and on PATH? (#9)
 - [ ] Does VS Code's Python interpreter point at the workspace's `.venv`? (#10)
-- [ ] Did you specify the board core in `west build` (`esp32s3_devkitc/esp32s3/procpu`)? (#11)
+- [ ] Did you specify the board core in `west build` (`sr100_rdk/sr100/m55`)? (#11)
 - [ ] If you built the project by hand, does `prj.conf` exist? (#12)
 - [ ] If you get a `build` folder error, did you try a pristine rebuild (`-p always`)? (#13)
-- [ ] Is `esptool` installed (`west packages pip --install`)? (#14)
+- [ ] Did you flash via `srsdk_tools\openocd_flash.py` instead of relying on `west flash`? (#14)
 - [ ] **If your Windows account name contains non-ASCII characters, did you point Python's and the SDK's install paths at an ASCII-only location?** (#15 — the most fundamental preventive measure)
 - [ ] If `west sdk install --install-base` seems ignored, did you delete the existing install first? (#16)

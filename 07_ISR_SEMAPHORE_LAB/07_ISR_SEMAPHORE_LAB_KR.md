@@ -6,30 +6,31 @@ ISR에서는 신호만 주고, 실제 처리는 Thread에서 하는 패턴을 �
 
 ## 준비물
 
-- 택트 스위치(버튼) 1개 — GPIO5, GND (`GPIO_LAB.md`와 동일한 배선)
-- Devicetree overlay 파일 추가 필요 (아래 참고)
+- 없음 — **SR110 RDK 보드에 이미 있는 물리 버튼(SW8)을 그대로 사용**합니다. 별도 배선이나 devicetree overlay가 필요 없습니다.
 
-## Devicetree Overlay
-
-프로젝트의 `boards/esp32s3_devkitc.overlay` 파일에 아래 내용을 추가합니다 (파일이 없다면 새로 생성).
-
-```dts
-/ {
-    aliases {
-        sw0 = &button0;
-    };
-
-    buttons {
-        compatible = "gpio-keys";
-        button0: button_0 {
-            gpios = <&gpio0 5 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-            label = "User button";
-        };
-    };
-};
-```
-
-이 overlay는 "GPIO5에 풀업 저항을 걸고, 눌리면 LOW가 되는 버튼이 있다"는 걸 Zephyr에게 알려주고, `sw0`이라는 별칭(alias)으로 코드에서 쉽게 참조할 수 있게 해줍니다.
+> **보드 확인 완료 (실제 `sr100_rdk_m55.dts` 검토, 2026-08)**: 보드 레벨 devicetree에 `sw0` alias가 이미 `user_button` 노드로 정의되어 있습니다.
+>
+> ```dts
+> aliases {
+>     ...
+>     sw0 = &user_button;
+>     ...
+> };
+>
+> buttons: keys {
+>     compatible = "gpio-keys";
+>
+>     user_button: user_button {
+>         label = "SW8";
+>         gpios = <&gpio_exp0 11 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+>         zephyr,code = <INPUT_KEY_0>;
+>     };
+> };
+> ```
+>
+> 즉 실제 물리 버튼은 보드 실크스크린 기준 **SW8**이고, `gpio_exp0`(PCA6416A I2C GPIO 익스팬더, I2C1에 연결됨 — I2C 버스 스캐너 실습 참고)의 11번 핀에 물려 있습니다. `gpio_exp0`는 자신의 INT 핀(`&gpioa 3`)을 SoC GPIO에 연결해두고 있어서, 익스팬더 뒤에 있는 버튼이라도 Zephyr의 표준 GPIO 인터럽트 API(`gpio_pin_interrupt_configure_dt`, `gpio_add_callback` 등)를 그대로 쓸 수 있습니다 — I2C 너머에 있다는 사실이 애플리케이션 코드에서는 드러나지 않습니다.
+>
+> **결론: 새 GPIO를 정의하거나 외부 버튼을 배선할 필요 없이, 기존 `sw0` alias를 그대로 쓰면 됩니다.** 아래 코드는 `DT_ALIAS(sw0)`만 참조하므로 오버레이 파일 자체가 필요 없습니다.
 
 ## 핵심 개념
 
@@ -77,20 +78,31 @@ int main(void) {
     gpio_init_callback(&button_cb_data, button_pressed, BIT(button.pin));
     gpio_add_callback(button.port, &button_cb_data);
 
-    printk("Ready. Press the button connected to GPIO5.\n");
+    printk("Ready. Press SW8.\n");
     return 0;
 }
 ```
 
+`prj.conf`:
+
+```
+CONFIG_GPIO=y
+CONFIG_PRINTK=y
+```
+
+> `user_button`이 `gpio_exp0`(PCA6416A, `nxp,pcal6416a` compatible) 뒤에 있으므로, 이 드라이버가 Kconfig에서 자동으로 활성화되는지 확인하세요 — 보드 dts에 이미 `gpio_exp0` 노드가 `status = "okay"`로 들어있어서 대부분 자동으로 잡히지만, 만약 링크 에러가 나면 `CONFIG_GPIO_PCAL6416A` 관련 Kconfig 심볼을 명시적으로 켜야 할 수 있습니다.
+
 ## 실행 & 확인
 
-- 버튼을 누를 때마다 `ButtonHandlerThread: interrupt signal received...`가 출력되는지 확인
+콘솔은 230400bps 8N1.
+
+- SW8 버튼을 누를 때마다 `ButtonHandlerThread: interrupt signal received...`가 출력되는지 확인
 
 ## 관찰 포인트
 
 - Zephyr는 `k_sem_give()` **하나로 스레드 컨텍스트와 ISR 컨텍스트 모두 처리**됩니다 — "깨어난 스레드가 즉시 실행되어야 하는가"는 커널이 알아서 판단합니다. API가 통일되어 있다는 게 이번 실습의 핵심 포인트입니다
 - 반면 09번 실습에서 다룰 `k_mutex`는 **ISR에서 절대 사용할 수 없습니다** (Lock/Unlock 모두 금지) — Mutex는 "소유자"라는 개념이 있는데 ISR에는 그 개념이 자연스럽게 적용되지 않기 때문입니다. "이벤트 신호는 Semaphore, 자원 보호는 Mutex"라는 원칙을 기억하세요
-- Devicetree 방식은 처음엔 번거로워 보이지만, 핀 번호가 코드에 하드코딩되지 않아 **보드를 바꿔도 overlay 파일만 교체하면 애플리케이션 코드는 그대로 재사용**할 수 있다는 장점이 있습니다
+- Devicetree 방식은 처음엔 번거로워 보이지만, 핀 번호가 코드에 하드코딩되지 않아 **보드를 바꿔도 alias/overlay만 맞으면 애플리케이션 코드는 그대로 재사용**할 수 있다는 장점이 있습니다. 이번 실습이 그 직접적인 증거입니다 — ESP32-S3에서 SR110으로 바뀌면서 애플리케이션 코드(`main.c`)는 **한 줄도 안 바뀌었고**, 물리적으로는 SoC 직결 GPIO 버튼에서 I2C GPIO 익스팬더 뒤의 버튼으로 완전히 달라졌는데도 `DT_ALIAS(sw0)` 덕분에 코드가 그 차이를 몰라도 됩니다
 
 ## 다음
 

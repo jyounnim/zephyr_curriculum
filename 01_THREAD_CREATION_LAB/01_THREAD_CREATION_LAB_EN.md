@@ -45,7 +45,7 @@ int main(void) {
 
 ## Run & Verify
 
-- `west build -b esp32s3_devkitc/esp32s3/procpu` → `west flash` → `west espressif monitor`
+- `west build -p always -b sr100_rdk/sr100/m55 <lab path>` → flash via `openocd_flash.py` → serial terminal at 230400bps 8N1
 - Confirm `ThreadA` (1s interval) and `ThreadB` (0.7s interval) each print independently
 - **Something to notice**: the `main: started...` log may appear *after* the first output from `ThreadA`/`ThreadB` — because threads created with `K_THREAD_DEFINE` are already scheduling candidates before `main()` even runs
 

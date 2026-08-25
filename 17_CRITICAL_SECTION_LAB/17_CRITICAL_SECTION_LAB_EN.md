@@ -86,4 +86,4 @@ void counting_thread_entry(void *p1, void *p2, void *p3) {
 
 ## Next
 
-Lab 18 (`18_MULTICORE_REALITY_LAB.md`) covers how Zephyr's multicore model actually works on the ESP32-S3.
+Lab 18 (`18_MULTICORE_REALITY_LAB.md`) covers how Zephyr's multicore model actually works on SR110's M55+M4 heterogeneous cores.

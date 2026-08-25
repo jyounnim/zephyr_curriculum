@@ -34,7 +34,7 @@ my_app/
 │       └── sensor/
 │           └── zds,aht20.yaml           ← Devicetree 바인딩
 ├── boards/
-│   └── esp32s3_devkitc.overlay          ← 실제 하드웨어 배치
+│   └── sr100_rdk_sr100_m55.overlay      ← 실제 하드웨어 배치
 ├── drivers/
 │   └── sensor/
 │       └── aht20/
@@ -209,11 +209,16 @@ DT_INST_FOREACH_STATUS_OKAY(AHT20_INIT)
 
 ## Step 5. Devicetree 오버레이 — 실제 하드웨어 배치
 
-**`boards/esp32s3_devkitc.overlay`**
+**`boards/sr100_rdk_sr100_m55.overlay`** (이 파일명이 board target과 일치해서 자동 인식됨 — I2C 버스 스캐너 실습 참고)
+
+SR110에서 I2C0는 SoC devicetree 기본값이 `status = "disabled"`이고 pinctrl 지정도 없어서, 단순히 `status = "okay"`만 넣는 것으로는 부족합니다 — pinctrl까지 명시해야 합니다(I2C 버스 스캐너 실습에서 확인된 내용, `i2c0_ms_scl`/`i2c0_ms_sda` 핀 그룹 사용). I2C1을 대신 쓴다면 이미 보드 dts에서 활성화되어 있어 오버레이가 필요 없습니다.
 
 ```dts
 &i2c0 {
     status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&i2c0_ms_scl &i2c0_ms_sda>;
+    clock-frequency = <100000>;
 
     aht20_sensor: aht20@38 {
         compatible = "zds,aht20";
@@ -223,16 +228,19 @@ DT_INST_FOREACH_STATUS_OKAY(AHT20_INIT)
 };
 ```
 
-> `&i2c0`은 보드의 I2C 컨트롤러 노드 레이블입니다. 사용 중인 Zephyr 버전/보드에서 정확한 레이블이 다를 수 있으니, `west build -t devicetree` 후 생성되는 병합된 devicetree(`build/zephyr/zephyr.dts`)에서 실제 I2C 노드 이름을 확인하세요.
+> `&i2c0`은 보드의 I2C 컨트롤러 노드 레이블입니다 — SR110에서는 `sr100_m55.dtsi`에서 확인됨. 다른 보드/Zephyr 버전에서는 레이블이 다를 수 있으니, `west build -t devicetree` 후 생성되는 병합된 devicetree(`build/zephyr/zephyr.dts`)에서 실제 I2C 노드 이름을 확인하세요.
 
 ## Step 6. prj.conf
 
 ```
 CONFIG_I2C=y
+CONFIG_I2C_DW=y
 CONFIG_SENSOR=y
 CONFIG_AHT20=y
 CONFIG_LOG=y
 ```
+
+> `CONFIG_I2C_DW=y`는 SR110의 I2C 컨트롤러가 Synopsys DesignWare 계열(`snps,designware-i2c`)이라 명시적으로 필요할 수 있습니다 — I2C 버스 스캐너 실습에서 devicetree 노드만으로는 부족했던 것과 같은 패턴입니다.
 
 ## Step 7. 앱 코드 — 센서 종류를 몰라도 되는 코드
 
@@ -271,9 +279,9 @@ int main(void) {
 ## 빌드 & 실행
 
 ```bash
-west build -b esp32s3_devkitc/esp32s3/procpu
-west flash
-west espressif monitor
+west build -p always -b sr100_rdk/sr100/m55 <실습 lab 경로>
+# 플래시: srsdk_tools 로 이동 후 python openocd_flash.py ... 실행 (SR110 플래시 가이드 참고)
+# 콘솔: 시리얼 터미널을 230400bps 8N1로 연결
 ```
 
 ## 실행 & 확인
