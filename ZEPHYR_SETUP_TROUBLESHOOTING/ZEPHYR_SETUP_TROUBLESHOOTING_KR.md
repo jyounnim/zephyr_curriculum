@@ -69,27 +69,27 @@ winget install Kitware.CMake Ninja-build.Ninja oss-winget.dtc oss-winget.gperf w
 
 ---
 
-## 4. Setup 과정에서 `sr110_cm55`, `SRSDK` 같은 낯선 이름이 나옴 (ESP32-S3가 아닌 다른 보드/SDK로 설정됨)
+## 4. Setup 과정에서 `sr110_cm55`, `SRSDK` 같은 이름이 나옴 — SR110에서는 이게 정상입니다
 
 ### 증상
 
 - Problems 패널에 `c_cpp_properties.json`이 `sr110_cm55_fw` 같은 경로를 참조한다는 경고가 뜸
 - 알림에 `SRSDK_DIR set to: ...\srsdk\srsdk-main\srsdk`, `No GCC_TOOLCHAIN_* key found in settings.json` 등이 뜸
-- 이후 `west boards`를 실행하면 esp32s3 관련 보드가 하나도 안 나옴
+- `west boards`를 실행하면 `sr100_rdk`가 뜨는지, 아니면 전혀 다른(예: 다른 벤더용) 보드 목록이 뜨는지 헷갈림
 
-### 원인
+### 확인해야 할 것
 
-`sr110`은 Cortex-M55(ARM) 기반 보드로, Xtensa 기반인 ESP32-S3와 전혀 다른 칩입니다. `SRSDK`도 공식 Zephyr SDK(`zephyr-sdk-x.y.z`) 명명 규칙과 다릅니다. Setup Standard Workspace의 자동 흐름이 확장에 내장된 **기본/예시 템플릿(다른 보드용)**으로 진행된 것으로 보이며, ESP32-S3를 명시적으로 선택하는 과정이 누락된 것으로 판단됩니다.
+이 커리큘럼 초기 버전(ESP32-S3 기준)에서는 이 상황을 "잘못된 보드/SDK가 설정된 경고 신호"로 다뤘습니다 — Xtensa 기반 ESP32-S3 작업 중에 Cortex-M55용 `sr110_cm55`나 `SRSDK`가 튀어나오는 건 확실히 잘못된 상황이었기 때문입니다.
 
-### 해결
+**SR110으로 작업하는 지금은 정반대입니다.** `sr110_cm55`(또는 `sr100_rdk/sr100/m55`), `SRSDK` 관련 이름이 보이는 건 **오히려 정상**이며, 지금 바로 이 커리큘럼이 다루는 보드/SDK 생태계입니다. 대신 확인해야 할 건 다음입니다.
 
-이 상태에서는 GUI 자동 흐름을 더 진행하지 말고, **방법 B(수동 CLI)로 워크스페이스를 처음부터 다시 만드는 걸 권장**합니다.
+1. `west boards | findstr sr100`을 실행했을 때 `sr100_rdk`가 실제로 나오는지
+2. 툴체인이 실제 확인된 `zephyr-sdk-1.0.1`(또는 그에 상응하는 SR110용 빌드)인지 — 전혀 무관한 보드 생태계(예: 다른 벤더의 예시 템플릿)가 잘못 잡힌 것인지는 `west build` 로그의 `Found toolchain:` 줄과 `Board:` 줄을 보고 실제 SR110/Cortex-M55 관련 내용인지로 판단하세요
+3. 반대로 **ESP32 관련 이름**(`esp32s3_devkitc`, `esptool` 등)이 이 워크스페이스에서 나온다면, 그건 이 워크스페이스가 `syna_zephyr_sdk`가 아니라 mainline Zephyr 매니페스트로 잘못 구성된 것일 수 있습니다 — 그 경우에만 워크스페이스를 다시 만드세요
 
-1. 문제가 생긴 workspace 폴더를 비우거나 새 폴더를 만듭니다
-2. `00_ZEPHYR_CURRICULUM_LAB.md`의 **방법 B** 순서대로 CLI에서 직접 `west init` (공식 Zephyr 매니페스트 `https://github.com/zephyrproject-rtos/zephyr` 사용) → `west update` 진행
-3. 완료 후 VS Code에서 `Zephyr IDE: Setup Workspace from Current Directory`로 이 workspace를 인식시킴
+### 정리
 
-CLI로 직접 진행하면 어떤 매니페스트(어떤 보드 생태계)를 받는지 명확하게 통제할 수 있어, 이런 문제 자체가 발생하지 않습니다.
+"낯선 이름이 나오면 무조건 잘못된 것"이 아니라, **지금 작업 대상이 어떤 보드/SDK인지에 따라 정상/비정상 판단 기준 자체가 달라진다**는 게 이 항목의 핵심입니다.
 
 ---
 
@@ -138,7 +138,7 @@ Windows Defender(또는 다른 백신)가 방금 생성된 git 임시 파일을 
 1. **재시도만으로 해결되는 경우도 있음**:
    ```powershell
    Remove-Item -Recurse -Force .west -ErrorAction SilentlyContinue
-   python -m west init -m https://github.com/zephyrproject-rtos/zephyr --mr main .
+   # TODO/VERIFY: syna_zephyr_sdk의 정확한 west init 매니페스트 명령 (00_ZEPHYR_CURRICULUM_LAB.md B-4 참고)
    ```
 2. **PowerShell을 관리자 권한으로 실행**해서 재시도 (실제로 이 방법으로 해결된 사례 확인됨)
 3. **Windows Defender 제외 폴더 추가**: Windows 보안 → 바이러스 및 위협 방지 → 설정 관리 → 제외 추가 → 작업 폴더(예: `C:\02.work`) 추가
@@ -206,7 +206,7 @@ python -m pip install -r zephyr\scripts\requirements.txt
 
 `requirements.txt`에서 `hidapi` 줄만 제외하고 설치를 시도할 수 있지만, `hidapi`가 **최상위 파일이 아니라 그게 참조하는 하위 requirements 파일(`requirements-*.txt`) 안에도 따로 포함**되어 있어서 한 번의 필터링으로 안 끝나는 경우가 확인됐습니다. 또한 필터링한 파일을 workspace 루트에 두면, 원본 `requirements.txt`가 같은 폴더의 다른 파일들을 상대경로로 참조하는 구조 때문에 `Could not open requirements file: requirements-base.txt` 같은 새 에러가 날 수 있습니다(반드시 `zephyr\scripts` 폴더 **안에서** 필터링/설치해야 함). 이런 이유로 위의 "근본적 해결"(Python 버전 교체) 쪽을 권장합니다.
 
-ESP32-S3는 esptool로 UART(시리얼) 플래싱을 쓰기 때문에, `hidapi`(주로 USB-HID 방식 디버그 프로브용) 자체가 당장의 빌드/플래시에는 필요 없는 경우가 대부분입니다.
+SR110은 `srsdk_tools`의 `openocd_flash.py`로 CMSIS-DAP/OpenOCD 기반 플래싱을 쓰기 때문에, `hidapi`(주로 USB-HID 방식 디버그 프로브용) 자체가 당장의 빌드/플래시에는 필요 없는 경우가 대부분입니다.
 
 ---
 
@@ -253,28 +253,30 @@ winget install 7zip.7zip
 
 ---
 
-## 11. `Board qualifiers 'esp32s3' for board 'esp32s3_devkitc' not found`
+## 11. `Board qualifiers 'sr100' for board 'sr100_rdk' not found`
 
 ### 증상
 
 ```
-CMake Error ... Board qualifiers `esp32s3` for board `esp32s3_devkitc` not found.
-Valid board targets for esp32s3_devkitc are:
-  esp32s3_devkitc/esp32s3/procpu
-  esp32s3_devkitc/esp32s3/appcpu
+CMake Error ... Board qualifiers `sr100` for board `sr100_rdk` not found.
+Valid board targets for sr100_rdk are:
+  sr100_rdk/sr100/m55
+  ...
 ```
 
 ### 원인
 
-ESP32-S3는 Zephyr에서 **SMP가 아니라 AMP 구조**입니다 (`18_MULTICORE_REALITY_LAB.md` 참고) — 코어마다 별도 OS 이미지를 빌드하는 구조라, 어느 코어를 타겟할지까지 보드 이름에 명시해야 합니다.
+SR110은 Zephyr에서 **M55/M4 이종 AMP 구조**입니다 (`18_MULTICORE_REALITY_LAB.md` 참고) — 코어마다 별도 OS 이미지를 빌드하는 구조라, 어느 코어를 타겟할지까지 보드 이름에 명시해야 합니다.
 
 ### 해결
 
 ```powershell
-west build -b esp32s3_devkitc/esp32s3/procpu
+west build -b sr100_rdk/sr100/m55
 ```
 
-일반적인 애플리케이션(시리얼 콘솔 사용)은 항상 **`procpu`**를 씁니다. `appcpu`는 `18_MULTICORE_REALITY_LAB.md`에서 다루는 특수한 듀얼코어 IPC 시나리오에서만 필요합니다.
+일반적인 애플리케이션(시리얼 콘솔 사용)은 항상 **`m55`**를 씁니다. `m4`는 `18_MULTICORE_REALITY_LAB.md`에서 다루는 특수한 듀얼코어 IPC 시나리오에서만 필요합니다.
+
+> TODO/VERIFY: M4용 정확한 board qualifier 표기(`sr100_rdk/sr100/m4`로 추정)는 이번 커리큘럼 작업에서 실제로 빌드해보지 않았습니다. `west boards`의 `Valid board targets` 출력에서 실제 표기를 확인하세요.
 
 ---
 
@@ -314,34 +316,36 @@ FATAL ERROR: command exited with status 1: '...\cmake.EXE' --build '...\build'
 ### 해결
 
 ```powershell
-west build -p always -b esp32s3_devkitc/esp32s3/procpu
+west build -p always -b sr100_rdk/sr100/m55
 ```
 
 `-p always`(pristine)는 기존 build 폴더를 무시하고 처음부터 다시 설정합니다. 또는 `build` 폴더를 직접 지우고(`Remove-Item -Recurse -Force build`) 재시도해도 동일합니다.
 
 ---
 
-## 14. `esptool>=5.0.2 not found in PATH`
+## 14. 플래싱 시 `west flash`가 SR110에 맞는 러너를 못 찾거나 예상과 다르게 동작함
 
 ### 증상
 
-CMake 설정은 다 통과하고(컴파일러까지 잡힘) 마지막에 이 에러로 멈춤
+`west flash`를 실행했는데 원하는 대로 플래시가 안 되거나, 이미지 경로/오프셋 관련 에러가 남
 
 ### 원인
 
-ESP32-S3 플래싱에 필요한 `esptool`이 venv에 설치되어 있지 않음. `west update`(소스 다운로드)와 `esptool` 같은 각 모듈의 Python 도구 설치는 별개의 단계입니다.
+SR110은 `west flash`를 통한 표준 플래시 흐름 대신, `srsdk_tools`의 `openocd_flash.py`를 별도로 실행하는 방식이 실제로 확인된 방법입니다 (Zephyr 공식 `sr100_rdk` 보드 문서에서도 `west debugserver` + 별도 터미널에서 `openocd_flash.py` 실행을 안내). `west flash`만으로 충분한 ESP32-S3(esptool 기반)와는 플래시 절차 자체가 다릅니다.
 
 ### 해결
 
 ```powershell
-west packages pip --install
+cd srsdk_tools
+python openocd_flash.py `
+  --openocd <openocd.exe 경로> `
+  --flash-offset 0x0 `
+  --file-offset 0x0 `
+  --cfg_path Input_Config\sr100_m55.cfg `
+  --image <빌드/변환된 이미지 경로>.bin
 ```
 
-이 명령이 안 먹히면 (west 버전에 따라):
-
-```powershell
-python -m pip install esptool
-```
+`--image` 경로가 실제 빌드 산출물(`build\zephyr\zephyr.bin`)을 그대로 가리키는지, 아니면 별도 signing/packaging을 거친 이미지를 가리켜야 하는지는 SDK 릴리스마다 다를 수 있습니다 — `00_ZEPHYR_CURRICULUM_LAB.md`의 Flash 섹션 TODO/VERIFY 참고.
 
 ---
 
@@ -425,9 +429,9 @@ python -m west sdk install --install-base D:\zephyr_toolchains
 - [ ] Python 3.11/3.12 전용 venv를 쓰고 있는가 (8번 — 대부분의 연쇄 문제를 예방)
 - [ ] 7-Zip이 설치되고 PATH에 잡혀있는가 (9번)
 - [ ] VS Code의 Python 인터프리터가 workspace의 `.venv`를 가리키는가 (10번)
-- [ ] `west build`에 보드 코어까지 명시했는가 (`esp32s3_devkitc/esp32s3/procpu`) (11번)
+- [ ] `west build`에 보드 코어까지 명시했는가 (`sr100_rdk/sr100/m55`) (11번)
 - [ ] 직접 만든 프로젝트라면 `prj.conf` 파일이 존재하는가 (12번)
 - [ ] `build` 폴더 에러가 나면 pristine 재빌드(`-p always`)를 시도했는가 (13번)
-- [ ] `esptool`이 설치되어 있는가 (`west packages pip --install`) (14번)
+- [ ] `west flash` 대신 `srsdk_tools\openocd_flash.py`로 플래시했는가 (14번)
 - [ ] **Windows 계정명이 한글이라면, Python과 SDK 설치 경로를 한글 없는 곳으로 지정했는가** (15번 — 가장 근본적인 예방책)
 - [ ] `west sdk install --install-base`가 무시되면 기존 설치부터 지웠는가 (16번)

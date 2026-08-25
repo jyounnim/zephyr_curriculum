@@ -45,7 +45,7 @@ int main(void) {
 
 ## 실행 & 확인
 
-- `west build -b esp32s3_devkitc/esp32s3/procpu` → `west flash` → `west espressif monitor`
+- `west build -p always -b sr100_rdk/sr100/m55 <lab 경로>` → `openocd_flash.py`로 플래시 → 시리얼 터미널(230400bps 8N1)
 - `ThreadA`(1초 간격)와 `ThreadB`(0.7초 간격)가 각자 독립적으로 출력되는지 확인
 - **관찰 포인트**: `main: started...` 로그가 `ThreadA`/`ThreadB`의 첫 출력보다 늦게 나올 수도 있습니다 — `K_THREAD_DEFINE`으로 만든 스레드는 `main()`이 실행되기 전부터 이미 스케줄링 대상이기 때문입니다
 

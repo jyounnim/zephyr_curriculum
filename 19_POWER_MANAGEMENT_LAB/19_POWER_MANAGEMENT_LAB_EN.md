@@ -44,7 +44,7 @@ int main(void) {
 ## Things to Notice
 
 - Rather than the developer explicitly deciding "when, and for how long, to enter power-saving mode," Zephyr **lets the kernel figure it out** — this design is possible because the scheduler already knows the next wakeup point (the next `k_sleep` expiry, the next timer expiry, etc.)
-- That said, which power states (Light Sleep, Deep Sleep, etc.) are actually supported **depends on how mature the SoC's Power Management driver implementation is** — the ESP32-S3 Zephyr port is an area of ongoing development, so it's worth checking the release notes for the Zephyr version you're using
+- That said, which power states are actually supported **depends on the SoC's Power Management driver implementation**. SR110's product brief lists four power tiers: active (sub-100 mW), low-power (sub-10 mW), ULP AON mode (sub-100 µW), and power-down — but whether all four are exposed through Zephyr's `CONFIG_PM` state machine on this specific SDK build is a separate question from whether the SoC itself supports them at the hardware level. TODO/VERIFY: confirm which of these four states `CONFIG_PM=y` actually drives into on `sr100_rdk/sr100/m55` versus which require the vendor-specific power APIs instead
 - For finer control, you can force a specific power state from code with `pm_state_force()`, or turn individual peripherals (sensors, communication modules, etc.) on/off separately with `pm_device_action_run()` — but the core takeaway of this lab is the automation itself: **power saving just works by default, with no extra effort**
 
 ## Next

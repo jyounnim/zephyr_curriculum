@@ -86,4 +86,4 @@ void counting_thread_entry(void *p1, void *p2, void *p3) {
 
 ## 다음
 
-18번 파일(`18_MULTICORE_REALITY_LAB.md`)에서 ESP32-S3에서 Zephyr의 멀티코어가 실제로 어떻게 동작하는지 다룹니다.
+18번 파일(`18_MULTICORE_REALITY_LAB.md`)에서 SR110의 M55+M4 이종 코어에서 Zephyr의 멀티코어가 실제로 어떻게 동작하는지 다룹니다.
