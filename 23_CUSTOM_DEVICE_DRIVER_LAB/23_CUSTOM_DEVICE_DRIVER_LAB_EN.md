@@ -1,5 +1,17 @@
 # 23. Building a Custom Device Driver — AHT20 Example
 
+> **Correction**: the previous distribution's `lab/boards/sr100_rdk_sr100_m55.overlay`,
+> `lab/sample.yaml`, and `lab/README.rst` were files mistakenly copied in
+> from a different lab (the SR100 RDK board, and the generic hello_world
+> sample) - they touched `&i2c1` or had nothing to do with AHT20 at all.
+> This version fixes those three files to match what this document
+> (Step 5) actually describes: `boards/esp32s3_devkitc_esp32s3_procpu.overlay`
+> (enables `&i2c0` and declares the `aht20@38` child node), `sample.yaml`,
+> and `README.rst`. The rest of the files (`main.c`, `CMakeLists.txt`,
+> `Kconfig`, `prj.conf`, `drivers/sensor/aht20/*`,
+> `dts/bindings/sensor/zds,aht20.yaml`) already matched this document
+> exactly and were left unchanged.
+
 ## What You'll Learn
 
 In `non_os/10_I2C_TEMP_HUMIDITY_LAB.md`, the Arduino approach to AHT20 pulled in the `Adafruit_AHTX0` library and called `aht.getEvent(...)` directly inside `main.cpp` — **a structure where the sensor communication logic is tangled together with the application code.**

@@ -1,18 +1,16 @@
 sample:
-  description: Hello World sample, the simplest Zephyr
-    application
-  name: hello world
+  description: Custom out-of-tree AHT20 I2C temperature/humidity sensor driver (Zephyr sensor API)
+  name: aht20_driver_example
 common:
-  min_ram: 2
-  min_flash: 16
-  tags: introduction
-  integration_platforms:
-    - native_sim
-  harness: console
-  harness_config:
-    type: one_line
-    regex:
-      - "Hello World! (.*)"
+  tags:
+    - i2c
+    - sensor
 tests:
-  sample.basic.helloworld:
-    tags: introduction
+  sample.sensor.aht20_driver_example:
+    platform_allow:
+      - esp32s3_devkitc/esp32s3/procpu
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Temperature: (.*) C, Humidity: (.*) %"

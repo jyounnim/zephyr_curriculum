@@ -1,0 +1,31 @@
+/*
+ * ESP32-S3-DevKitC-1: enable I2C0 and declare the AHT20 sensor on it.
+ *
+ * The board's own pinctrl (esp32s3-devkitc-pinctrl.dtsi, part of the
+ * upstream Zephyr board definition) already wires i2c0_default to
+ * SDA = GPIO1 / SCL = GPIO2 and sets pinctrl-0 / pinctrl-names on
+ * &i2c0 - the SoC-level node just ships "status = disabled" by
+ * default, so this overlay only needs to flip it on and add the
+ * sensor child node.
+ *
+ * NOTE: this file replaces boards/sr100_rdk_sr100_m55.overlay, which
+ * was mistakenly left in this lab from a different (SR100 RDK) board
+ * - it targeted &i2c1 there and does not apply to the ESP32-S3 at
+ * all. This overlay matches what 23_CUSTOM_DEVICE_DRIVER_LAB_KR.md /
+ * _EN.md Step 5 actually documents.
+ *
+ * If you also enable Lab 24 (SSD1306 display, also on &i2c0) at the
+ * same time, merge both overlays into a single &i2c0 block instead of
+ * shipping two separate ones for the same node.
+ */
+
+&i2c0 {
+	status = "okay";
+	clock-frequency = <100000>;
+
+	aht20_sensor: aht20@38 {
+		compatible = "zds,aht20";
+		reg = <0x38>;
+		status = "okay";
+	};
+};

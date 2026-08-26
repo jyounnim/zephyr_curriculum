@@ -1,5 +1,15 @@
 # 23. 커스텀 디바이스 드라이버 만들기 — AHT20 예제
 
+> **정정 사항**: 이전 배포본의 `lab/boards/sr100_rdk_sr100_m55.overlay`와
+> `lab/sample.yaml`, `lab/README.rst`는 다른 랩(SR100 RDK, hello_world
+> 샘플)에서 잘못 섞여 들어간 파일이었습니다 (`&i2c1`을 건드리거나 AHT20과
+> 무관한 내용). 이번 버전에서 아래 세 파일을 이 문서(Step 5)와 일치하도록
+> 바로잡았습니다: `boards/esp32s3_devkitc_esp32s3_procpu.overlay`(`&i2c0`
+> 활성화 + `aht20@38` 노드), `sample.yaml`, `README.rst`. 나머지 파일
+> (`main.c`, `CMakeLists.txt`, `Kconfig`, `prj.conf`, `drivers/sensor/aht20/*`,
+> `dts/bindings/sensor/zds,aht20.yaml`)은 원래부터 이 문서와 정확히
+> 일치했어서 변경하지 않았습니다.
+
 ## 이 실습에서 배우는 것
 
 `non_os/10_I2C_TEMP_HUMIDITY_LAB.md`에서 Arduino 방식으로 AHT20을 다뤘을 때는, `main.cpp` 안에서 `Adafruit_AHTX0` 라이브러리를 불러와 직접 `aht.getEvent(...)`를 호출했습니다 — **센서 통신 로직이 애플리케이션 코드와 뒤섞여 있는 구조**입니다.
