@@ -21,6 +21,9 @@ A 23-lab series for learning Zephyr RTOS's API and design philosophy, in order. 
 1. In VS Code Extensions (`Ctrl+Shift+X`), search for `Zephyr IDE`
 2. Install the **Zephyr IDE** extension by **mylonics**
 3. Restart VS Code after installing
+```
+Ref: https://github.com/synaptics-astra-mcu/syna_zephyr_sdk/blob/v1.0.0/boards/syna/astra_sr/sr100/doc/index.rst
+```
 
 ---
 
