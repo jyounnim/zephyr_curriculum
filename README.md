@@ -107,7 +107,7 @@ python -m pip install west
 #### B-4. Initialize the west Workspace + Download Zephyr Source/HAL Modules
 
 ```powershell
-python -m west init -m https://github.com/zephyrproject-rtos/zephyr --mr main .
+python -m west init -m https://github.com/zephyrproject-rtos/zephyr --mr v1.0.0 .
 python -m west update              # hundreds of MB to 1GB+, can take a while depending on your network
 ```
 
